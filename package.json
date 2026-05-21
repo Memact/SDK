@@ -1,0 +1,23 @@
+{
+  "name": "@memact/sdk",
+  "version": "0.0.1",
+  "private": false,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "SDK for apps and sites using Memact capture, access, features, schemas, and memory.",
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "scripts": {
+    "check": "node --test",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Memact/SDK.git"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
