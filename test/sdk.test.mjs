@@ -34,10 +34,10 @@ test("verifyAccess and runFeature post correctly", async () => {
     }
   })
   await client.verifyAccess({})
-  await client.runFeature("user-context-wiki", {})
+  await client.runFeature("adaptive-article-overview", {})
   assert.deepEqual(urls, [
     "https://api.example.test/v1/access/verify",
-    "https://api.example.test/v1/features/user-context-wiki/run"
+    "https://api.example.test/v1/features/adaptive-article-overview/run"
   ])
 })
 

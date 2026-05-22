@@ -22,8 +22,10 @@ await memact.capture({
   payload: { title, url }
 });
 
-const result = await memact.runFeature("user-context-wiki", {
-  schema_packets: []
+const result = await memact.runFeature("adaptive-article-overview", {
+  article: { title, excerpt, topic, source },
+  reading_memory: { preferred_summary_style: "key_points" },
+  recent_events: []
 });
 ```
 
@@ -66,3 +68,12 @@ const result = await memact.runFeature("adaptive-article-overview", {
 ```
 
 The SDK only sends schema definitions and feature requests. Schema packet formation stays in the Schema repo.
+
+## Consent and Wiki Links
+
+Apps should embed both user surfaces:
+
+- Connect opens before access so the user can choose what the app may use.
+- Wiki opens after access so the user can review what the app can add, what Memact may create, and how to stop future access.
+
+Keep both links in your app UI. Do not hide the Wiki behind settings only.
