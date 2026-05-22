@@ -36,7 +36,33 @@ Keep API keys on the server. Do not put them in browser code.
 - `getFeatures()` lists available Memact features.
 - `runFeature(featureId, input, options)` asks Access to run a feature.
 - `getSchemas(options)` retrieves permitted schema summaries.
+- `addSchema(schema)` registers a schema definition through Access.
+- `addSubSchema(schemaId, subSchema)` registers a subschema definition.
+- `getSchema(schemaId)` retrieves one schema definition.
 - `getMemory(options)` retrieves permitted memory summaries.
 
 The SDK fills basic defaults like `schema_version`, `source_app`, and
 `occurred_at` for capture events.
+
+## Adaptive Article Overview
+
+Article apps can send approved reading events and run the `adaptive-article-overview` feature from their server.
+
+```js
+const result = await memact.runFeature("adaptive-article-overview", {
+  article: { title, excerpt, topic, source, estimated_read_time_minutes },
+  reading_memory: {
+    average_read_time_seconds,
+    average_scroll_depth,
+    finish_rate,
+    preferred_topics,
+    skipped_topics,
+    preferred_article_length,
+    preferred_summary_style,
+    repeat_topics
+  },
+  recent_events: []
+});
+```
+
+The SDK only sends schema definitions and feature requests. Schema packet formation stays in the Schema repo.

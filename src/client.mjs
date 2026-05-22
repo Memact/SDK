@@ -61,6 +61,28 @@ export function createMemactClient(config = {}) {
     getSchemas(options = {}) {
       return request(withQuery("/v1/schemas", options), { connectionId: options.connection_id || config.connectionId })
     },
+    listSchemas(options = {}) {
+      return request(withQuery("/v1/schemas", options), { connectionId: options.connection_id || config.connectionId })
+    },
+    addSchema(schema = {}, options = {}) {
+      return request("/v1/schemas", {
+        method: "POST",
+        body: schema,
+        connectionId: options.connection_id || config.connectionId
+      })
+    },
+    addSubSchema(schemaId, subSchema = {}, options = {}) {
+      if (!schemaId) throw new MemactSDKError("schemaId is required", { code: "missing_schema_id" })
+      return request(`/v1/schemas/${encodeURIComponent(schemaId)}/subschemas`, {
+        method: "POST",
+        body: subSchema,
+        connectionId: options.connection_id || config.connectionId
+      })
+    },
+    getSchema(schemaId, options = {}) {
+      if (!schemaId) throw new MemactSDKError("schemaId is required", { code: "missing_schema_id" })
+      return request(withQuery(`/v1/schemas/${encodeURIComponent(schemaId)}`, options), { connectionId: options.connection_id || config.connectionId })
+    },
     getMemory(options = {}) {
       return request(withQuery("/v1/memory", options), { connectionId: options.connection_id || config.connectionId })
     }

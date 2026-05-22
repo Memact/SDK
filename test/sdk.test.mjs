@@ -41,6 +41,24 @@ test("verifyAccess and runFeature post correctly", async () => {
   ])
 })
 
+test("schema helper methods call schema endpoints", async () => {
+  const calls = []
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
+  })
+  await client.addSchema({ schema_id: "reading_preferences", category: "reading" })
+  await client.addSubSchema("reading_preferences", { sub_schema_id: "summary_style_preference" })
+  await client.getSchema("reading_preferences")
+  assert.equal(calls[0].url, "https://api.example.test/v1/schemas")
+  assert.equal(calls[0].options.method, "POST")
+  assert.equal(calls[1].url, "https://api.example.test/v1/schemas/reading_preferences/subschemas")
+  assert.equal(calls[2].url, "https://api.example.test/v1/schemas/reading_preferences")
+})
+
 test("non-2xx response throws MemactSDKError", async () => {
   const client = createMemactClient({
     baseUrl: "https://api.example.test",
