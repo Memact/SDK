@@ -1,8 +1,16 @@
 # Memact SDK
 
-The SDK helps apps send signals and use Memact features without writing raw HTTP calls.
+The SDK helps apps connect to Memact without writing raw HTTP calls.
 
 Use it from your server. Do not put a Memact API key in browser code.
+
+## Current Direction
+
+Memact is a user-controlled context layer for app personalization.
+
+Apps send context. App categories give it shape. Wiki gives users control.
+
+Apps can use the SDK to request access, propose Wiki entries, send app context, read allowed category context, and work with category schemas.
 
 ## Example
 
@@ -15,65 +23,31 @@ const memact = createMemactClient({
   appId: "your_app_id",
   connectionId: "connection_id_from_consent"
 });
-
-await memact.capture({
-  event_type: "article_read",
-  category: "web:research",
-  payload: { title, url }
-});
-
-const result = await memact.runFeature("adaptive-article-overview", {
-  article: { title, excerpt, topic, source },
-  reading_memory: { preferred_summary_style: "key_points" },
-  recent_events: []
-});
 ```
 
-Keep API keys on the server. Do not put them in browser code.
+Keep API keys on the server. Do not put them in browser code, public repos, logs, or user-facing settings.
 
 ## Methods
 
-- `capture(event)` sends a capture event to `/v1/capture/events`.
+Current and planned SDK methods should support:
+
 - `verifyAccess(options)` checks scopes, categories, and connection access.
-- `getFeatures()` lists available Memact features.
-- `runFeature(featureId, input, options)` asks Access to run a feature.
-- `getSchemas(options)` retrieves permitted schema summaries.
+- `proposeWikiEntry(entry)` proposes a user-visible Wiki entry.
+- `submitContext(context)` sends app context for category shaping.
+- `getAllowedContext(options)` retrieves allowed category context.
+- `getSchemas(options)` retrieves permitted category schemas.
 - `addSchema(schema)` registers a schema definition through Access.
 - `addSubSchema(schemaId, subSchema)` registers a subschema definition.
 - `getSchema(schemaId)` retrieves one schema definition.
 - `getMemory(options)` retrieves permitted memory summaries.
 
-The SDK fills basic defaults like `schema_version`, `source_app`, and
-`occurred_at` for capture events.
-
-## Adaptive Article Overview
-
-Article apps can send approved reading events and run the `adaptive-article-overview` feature from their server.
-
-```js
-const result = await memact.runFeature("adaptive-article-overview", {
-  article: { title, excerpt, topic, source, estimated_read_time_minutes },
-  reading_memory: {
-    average_read_time_seconds,
-    average_scroll_depth,
-    finish_rate,
-    preferred_topics,
-    skipped_topics,
-    preferred_article_length,
-    preferred_summary_style,
-    repeat_topics
-  },
-  recent_events: []
-});
-```
-
-The SDK only sends schema definitions and feature requests. Schema packet formation stays in the Schema repo.
+Compatibility methods may still exist while the product moves away from Capture and Playground as current core.
 
 ## Consent and Wiki Links
 
 Apps should embed both user surfaces:
 
 - Connect opens before access so the user can choose what the app may use.
-- Wiki opens after access so the user can review what the app can add, what Memact may create, and how to stop future access.
+- Wiki opens after access so the user can review proposed context, accepted context, visibility, and future access.
 
 Keep both links in your app UI. Do not hide the Wiki behind settings only.
