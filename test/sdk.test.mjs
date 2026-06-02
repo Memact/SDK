@@ -59,6 +59,24 @@ test("schema helper methods call schema endpoints", async () => {
   assert.equal(calls[2].url, "https://api.example.test/v1/schemas/reading_preferences")
 })
 
+test("context helper methods call context endpoints", async () => {
+  const calls = []
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
+  })
+  await client.addContextCategory({ context_id: "reading_preferences", category: "reading" })
+  await client.addSubContext("reading_preferences", { sub_context_id: "summary_style_preference" })
+  await client.getContext("reading_preferences")
+  assert.equal(calls[0].url, "https://api.example.test/v1/context")
+  assert.equal(calls[0].options.method, "POST")
+  assert.equal(calls[1].url, "https://api.example.test/v1/context/reading_preferences/subcontexts")
+  assert.equal(calls[2].url, "https://api.example.test/v1/context/reading_preferences")
+})
+
 test("non-2xx response throws MemactSDKError", async () => {
   const client = createMemactClient({
     baseUrl: "https://api.example.test",

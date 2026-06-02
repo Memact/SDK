@@ -58,6 +58,31 @@ export function createMemactClient(config = {}) {
     getFeatures() {
       return request("/v1/features")
     },
+    listContext(options = {}) {
+      return request(withQuery("/v1/context", options), { connectionId: options.connection_id || config.connectionId })
+    },
+    getContextCategories(options = {}) {
+      return request(withQuery("/v1/context", options), { connectionId: options.connection_id || config.connectionId })
+    },
+    addContextCategory(context = {}, options = {}) {
+      return request("/v1/context", {
+        method: "POST",
+        body: context,
+        connectionId: options.connection_id || config.connectionId
+      })
+    },
+    addSubContext(contextId, subContext = {}, options = {}) {
+      if (!contextId) throw new MemactSDKError("contextId is required", { code: "missing_context_id" })
+      return request(`/v1/context/${encodeURIComponent(contextId)}/subcontexts`, {
+        method: "POST",
+        body: subContext,
+        connectionId: options.connection_id || config.connectionId
+      })
+    },
+    getContext(contextId, options = {}) {
+      if (!contextId) throw new MemactSDKError("contextId is required", { code: "missing_context_id" })
+      return request(withQuery(`/v1/context/${encodeURIComponent(contextId)}`, options), { connectionId: options.connection_id || config.connectionId })
+    },
     getSchemas(options = {}) {
       return request(withQuery("/v1/schemas", options), { connectionId: options.connection_id || config.connectionId })
     },

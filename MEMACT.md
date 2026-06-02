@@ -4,7 +4,7 @@ Memact is a playground where apps personalize using context the user can actuall
 
 It is still a playground, even if the old Playground repo is no longer the main place to contribute.
 
-The current playground is Schema: app categories, context shapes, examples, prompts, and tests.
+The current contribution path is Context, formerly Schema: app categories, context shapes, examples, prompts, and tests.
 
 Apps send context. App categories give it shape. Wiki gives users control.
 
@@ -32,7 +32,7 @@ Contributors can add context fields, messy app context examples, expected Wiki o
 
 - Access handles consent, apps, API keys, scopes, and permissions.
 - Wiki is where users add, edit, approve, reject, delete, and share context.
-- Schema defines app category schemas.
+- Context defines app category rules and proposal templates.
 - Memory stores accepted context, history, retrieval, and app-safe summaries.
 - Contracts defines shared shapes.
 - SDK lets apps connect to Memact.
