@@ -41,6 +41,31 @@ export function createMemactClient(config = {}) {
       if (!validation.ok) throw new MemactSDKError(validation.errors.join(", "), { code: "invalid_capture_event" })
       return request("/v1/capture/events", { method: "POST", body, connectionId: event.connection_id || config.connectionId })
     },
+    sendSignal(signal = {}, options = {}) {
+      const body = {
+        connection_id: options.connection_id || signal.connection_id || config.connectionId,
+        raw_signal: {
+          schema_version: "memact.app_context_signal.v0",
+          source_app: signal.source_app || config.appId || "app",
+          occurred_at: signal.occurred_at || new Date().toISOString(),
+          ...signal
+        }
+      }
+      return request("/v1/wiki/proposals", { method: "POST", body, connectionId: body.connection_id })
+    },
+    proposeContext(proposal = {}, options = {}) {
+      const body = {
+        connection_id: options.connection_id || proposal.connection_id || config.connectionId,
+        proposal: {
+          source_app: proposal.source_app || config.appId || "app",
+          ...proposal
+        }
+      }
+      return request("/v1/wiki/proposals", { method: "POST", body, connectionId: body.connection_id })
+    },
+    proposeWikiEntry(proposal = {}, options = {}) {
+      return this.proposeContext(proposal, options)
+    },
     verifyAccess(options = {}) {
       return request("/v1/access/verify", { method: "POST", body: options, connectionId: options.connection_id || config.connectionId })
     },
@@ -110,6 +135,9 @@ export function createMemactClient(config = {}) {
     },
     getMemory(options = {}) {
       return request(withQuery("/v1/memory", options), { connectionId: options.connection_id || config.connectionId })
+    },
+    getCredits() {
+      return request("/v1/credits")
     }
   }
 }

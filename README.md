@@ -41,15 +41,18 @@ MEMACT_CONNECTION_ID=connection_id_from_connect_redirect
 Current and planned SDK methods should support:
 
 - `verifyAccess(options)` checks scopes, categories, and connection access.
-- `proposeWikiEntry(entry)` proposes a user-visible Wiki entry.
-- `submitContext(context)` sends app context for category shaping.
-- `getAllowedContext(options)` retrieves allowed category context.
+- `sendSignal(signal)` sends a raw app signal so Memact can turn it into a Wiki proposal.
+- `proposeContext(proposal)` proposes context directly with evidence for user review.
+- `proposeWikiEntry(entry)` is an alias for proposing user-visible context.
 - `listContext(options)` retrieves permitted category context rules.
 - `addContextCategory(context)` registers a context category through Access.
 - `addSubContext(contextId, subContext)` registers a subcategory definition.
 - `getContext(contextId)` retrieves one context category.
 - `getSchemas`, `addSchema`, `addSubSchema`, and `getSchema` remain as compatibility aliases for older integrations.
 - `getMemory(options)` retrieves permitted memory summaries.
+- `getCredits()` returns the app credit ledger summary.
+
+Raw signals earn fewer app credits because Memact has to shape them before the user can review them. Clean context proposals with evidence earn more. Reading allowed context spends credits. This is developer-side accounting; users mainly see and control the Wiki.
 
 Compatibility methods may still exist while the product moves away from Capture and Playground as current core.
 

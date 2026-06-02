@@ -77,6 +77,30 @@ test("context helper methods call context endpoints", async () => {
   assert.equal(calls[2].url, "https://api.example.test/v1/context/reading_preferences")
 })
 
+test("signal, context proposal, and credit methods call access endpoints", async () => {
+  const calls = []
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    apiKey: "mka_test",
+    appId: "music-app",
+    connectionId: "con_1",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
+  })
+
+  await client.sendSignal({ event_type: "playlist_replay", category: "music", payload: { genre: "Brazilian phonk" } })
+  await client.proposeContext({ category: "music", title: "Prefers Brazilian phonk", context: { genre: "Brazilian phonk" } })
+  await client.getCredits()
+
+  assert.equal(calls[0].url, "https://api.example.test/v1/wiki/proposals")
+  assert.equal(JSON.parse(calls[0].options.body).raw_signal.source_app, "music-app")
+  assert.equal(calls[1].url, "https://api.example.test/v1/wiki/proposals")
+  assert.equal(JSON.parse(calls[1].options.body).proposal.title, "Prefers Brazilian phonk")
+  assert.equal(calls[2].url, "https://api.example.test/v1/credits")
+})
+
 test("non-2xx response throws MemactSDKError", async () => {
   const client = createMemactClient({
     baseUrl: "https://api.example.test",
