@@ -1,18 +1,21 @@
 # Memact SDK
 
-The SDK helps apps connect to Memact without writing raw HTTP calls.
+The SDK helps apps use Memact from server-side code.
 
-Use it from your server. Do not put a Memact API key in browser code.
+Keep Memact API keys on the server. Do not put them in browser code, public
+repos, logs, or user-facing settings.
 
-## Current Direction
+## What Memact Does
 
-Memact is a user-controlled context layer for app personalization.
+Memact helps apps personalize with memory the user can see and control.
 
-Apps send context. App categories give it shape. Wiki gives users control.
+An app can ask first, suggest memory with evidence, and later read only the
+memory the user allowed. If the app only has weak activity, Memact can keep it
+as a reviewable suggestion instead of treating it as identity.
 
-Apps can use the SDK to request access, propose Wiki entries, send app signals or context, read allowed category context, and work with category rules.
+Activity is not identity.
 
-## Example
+## Setup
 
 ```js
 import { createMemactClient } from "@memact/sdk";
@@ -25,8 +28,6 @@ const memact = createMemactClient({
 });
 ```
 
-Keep API keys on the server. Do not put them in browser code, public repos, logs, or user-facing settings.
-
 Use the same environment variables shown in the Memact Connect tutorial:
 
 ```env
@@ -36,52 +37,71 @@ MEMACT_APP_ID=app_id_from_memact_portal
 MEMACT_CONNECTION_ID=connection_id_from_connect_redirect
 ```
 
-## Methods
-
-Current and planned SDK methods should support:
+## Main Methods
 
 - `verifyAccess(options)` checks scopes, categories, and connection access.
-- `sendSignal(signal)` sends a raw app signal so Memact can turn it into a Wiki proposal.
-- `proposeContext(proposal)` proposes context directly with evidence for user review.
-- `proposeWikiEntry(entry)` is an alias for proposing user-visible context.
-- `listContext(options)` retrieves permitted category context rules.
-- `addContextCategory(context)` registers a context category through Access.
-- `addSubContext(contextId, subContext)` registers a subcategory definition.
-- `getContext(contextId)` retrieves one context category.
-- `getSchemas`, `addSchema`, `addSubSchema`, and `getSchema` remain as compatibility aliases for older integrations.
-- `getMemory(options)` retrieves permitted memory summaries.
+- `suggestMemory(proposal)` suggests a memory entry for user review.
+- `sendAppActivity(activity)` sends specific app activity for Memact to shape into a reviewable memory suggestion.
+- `getMemory(options)` reads only allowed memory summaries.
+- `getAllowedMemory(options)` is the clearer alias for app integrations.
 - `getCredits()` returns the app credit ledger summary.
 
-Raw signals earn fewer app credits because Memact has to shape them before the user can review them. Clean context proposals with evidence earn more. Reading allowed context spends credits. This is developer-side accounting; users mainly see and control the Wiki.
+Context helpers:
 
-Compatibility methods may still exist while the product moves away from Capture and Playground as current core.
+- `listContext(options)` lists category rules.
+- `addContextCategory(context)` registers a category through Access.
+- `addSubContext(contextId, subContext)` registers a subcategory definition.
+- `getContext(contextId)` retrieves one category.
 
-## Discord Channel Personalizer
+Compatibility aliases remain for older integrations:
 
-Discord bots can run `discord-channel-personalizer` after the Discord user connects Memact and consents. The bot should send server channel names/topics and approved memory, not private messages by default.
+- `sendSignal(signal)` aliases `sendAppActivity`.
+- `proposeContext(proposal)` and `proposeWikiEntry(entry)` still work.
+- `capture(event)` still posts to the older capture route.
+- `getSchemas`, `addSchema`, `addSubSchema`, and `getSchema` remain for older Schema wording.
+
+## Example
 
 ```js
-const result = await memact.runFeature("discord-channel-personalizer", {
-  activity_categories: ["community:discord"],
-  user_memory: {
-    interests: ["developer tools", "memact"],
-    muted_topics: ["memes"]
+await memact.verifyAccess({
+  required_scopes: ["context:write", "memory:read_summary"],
+  activity_categories: ["fitness"],
+  connection_id: process.env.MEMACT_CONNECTION_ID
+});
+
+await memact.suggestMemory({
+  category: "fitness",
+  title: "Prefers strength workouts",
+  context: {
+    preference: "strength workouts"
   },
-  server: {
-    name: "Memact",
-    channels: [
-      { id: "1", name: "memact-api", topic: "SDK and API help" },
-      { id: "2", name: "memes", topic: "off-topic jokes" }
-    ]
+  evidence: {
+    reason: "The user completed strength workout plans in this app."
   }
+});
+
+const memory = await memact.getAllowedMemory({
+  connection_id: process.env.MEMACT_CONNECTION_ID,
+  activity_categories: ["fitness"]
 });
 ```
 
-## Consent and Wiki Links
+## Credits
+
+Credits are developer-side accounting.
+
+- Specific app activity earns fewer credits because Memact still has to shape it
+  before the user reviews it.
+- A clear memory suggestion with evidence earns more.
+- Reading allowed memory spends credits.
+
+Users do not need to think about credits. Users see Yourself: what apps know,
+what apps suggest, and what they can change.
+
+## Consent and Yourself Links
 
 Apps should embed both user surfaces:
 
 - Connect opens before access so the user can choose what the app may use.
-- Wiki opens after access so the user can review proposed context, accepted context, visibility, and future access.
-
-Keep both links in your app UI. Do not hide the Wiki behind settings only.
+- Yourself opens after access so the user can review suggested memory, accepted
+  memory, visibility, and future access.

@@ -4,7 +4,7 @@
   "private": false,
   "license": "Apache-2.0",
   "type": "module",
-  "description": "SDK for apps to connect to Memact, propose context, and read allowed category memory.",
+  "description": "SDK for apps to connect to Memact, suggest memory, and read allowed memory.",
   "main": "./src/index.mjs",
   "exports": {
     ".": "./src/index.mjs"

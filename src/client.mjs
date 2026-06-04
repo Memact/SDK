@@ -53,6 +53,9 @@ export function createMemactClient(config = {}) {
       }
       return request("/v1/wiki/proposals", { method: "POST", body, connectionId: body.connection_id })
     },
+    sendAppActivity(activity = {}, options = {}) {
+      return this.sendSignal(activity, options)
+    },
     proposeContext(proposal = {}, options = {}) {
       const body = {
         connection_id: options.connection_id || proposal.connection_id || config.connectionId,
@@ -63,8 +66,18 @@ export function createMemactClient(config = {}) {
       }
       return request("/v1/wiki/proposals", { method: "POST", body, connectionId: body.connection_id })
     },
+    suggestMemory(proposal = {}, options = {}) {
+      const body = {
+        connection_id: options.connection_id || proposal.connection_id || config.connectionId,
+        proposal: {
+          source_app: proposal.source_app || config.appId || "app",
+          ...proposal
+        }
+      }
+      return request("/v1/memory/suggestions", { method: "POST", body, connectionId: body.connection_id })
+    },
     proposeWikiEntry(proposal = {}, options = {}) {
-      return this.proposeContext(proposal, options)
+      return this.suggestMemory(proposal, options)
     },
     verifyAccess(options = {}) {
       return request("/v1/access/verify", { method: "POST", body: options, connectionId: options.connection_id || config.connectionId })
@@ -135,6 +148,9 @@ export function createMemactClient(config = {}) {
     },
     getMemory(options = {}) {
       return request(withQuery("/v1/memory", options), { connectionId: options.connection_id || config.connectionId })
+    },
+    getAllowedMemory(options = {}) {
+      return this.getMemory(options)
     },
     getCredits() {
       return request("/v1/credits")

@@ -92,13 +92,18 @@ test("signal, context proposal, and credit methods call access endpoints", async
 
   await client.sendSignal({ event_type: "playlist_replay", category: "music", payload: { genre: "Brazilian phonk" } })
   await client.proposeContext({ category: "music", title: "Prefers Brazilian phonk", context: { genre: "Brazilian phonk" } })
+  await client.suggestMemory({ category: "fitness", title: "Prefers strength workouts", context: { preference: "strength" } })
+  await client.getAllowedMemory({ connection_id: "conn_1", activity_categories: ["fitness"] })
   await client.getCredits()
 
   assert.equal(calls[0].url, "https://api.example.test/v1/wiki/proposals")
   assert.equal(JSON.parse(calls[0].options.body).raw_signal.source_app, "music-app")
   assert.equal(calls[1].url, "https://api.example.test/v1/wiki/proposals")
   assert.equal(JSON.parse(calls[1].options.body).proposal.title, "Prefers Brazilian phonk")
-  assert.equal(calls[2].url, "https://api.example.test/v1/credits")
+  assert.equal(calls[2].url, "https://api.example.test/v1/memory/suggestions")
+  assert.equal(JSON.parse(calls[2].options.body).proposal.title, "Prefers strength workouts")
+  assert.equal(calls[3].url, "https://api.example.test/v1/memory?connection_id=conn_1&activity_categories=fitness")
+  assert.equal(calls[4].url, "https://api.example.test/v1/credits")
 })
 
 test("non-2xx response throws MemactSDKError", async () => {
