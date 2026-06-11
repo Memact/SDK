@@ -46,12 +46,6 @@ MEMACT_CONNECTION_ID=connection_id_from_connect_redirect
 - `getAllowedMemory(options)` is the clearer alias for app integrations.
 - `getCredits()` returns the app credit ledger summary.
 
-CAP helpers:
-
-- `cap.request(input)` creates a Context Access Protocol request.
-- `cap.packet(input)` returns a small approved context packet for that request.
-- `cap.propose(input)` proposes a field-level memory update for user review.
-
 Context helpers:
 
 - `listContext(options)` lists category rules.
@@ -91,30 +85,6 @@ const memory = await memact.getAllowedMemory({
   activity_categories: ["fitness"]
 });
 ```
-
-## CAP Example
-
-CAP is internal backend naming for Context Access Protocol. It is how an app asks
-for specific approved memory without receiving the user's whole Yourself page.
-
-```js
-const request = await memact.cap.request({
-  purpose: "onboarding_prefill",
-  requested_categories: ["fitness"],
-  requested_context: [
-    { description: "workout goal", field_hint: "fitness.goal", required: true },
-    { description: "dietary preference", field_hint: "diet.preference", required: false }
-  ]
-});
-
-const packet = await memact.cap.packet({
-  request_id: request.request.request_id,
-  requested_categories: ["fitness"]
-});
-```
-
-`packet.allowed_context` contains only approved fragments. `packet.missing_context`
-lists what Memact could not safely answer, so the app can ask the user normally.
 
 ## Credits
 
