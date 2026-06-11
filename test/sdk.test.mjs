@@ -106,6 +106,40 @@ test("signal, context proposal, and credit methods call access endpoints", async
   assert.equal(calls[4].url, "https://api.example.test/v1/credits")
 })
 
+test("CAP helpers call CAP endpoints from server-side client", async () => {
+  const calls = []
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    apiKey: "mka_test",
+    appId: "fitness-app",
+    connectionId: "con_1",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
+  })
+
+  await client.cap.request({
+    purpose: "onboarding_prefill",
+    requested_context: [{ description: "workout goal", required: true }],
+    requested_categories: ["fitness"]
+  })
+  await client.cap.packet({
+    request_id: "cap_req_1",
+    requested_categories: ["fitness"]
+  })
+  await client.cap.propose({
+    category: "fitness",
+    field_path: "fitness.goal",
+    proposed_value: "maintenance"
+  })
+
+  assert.equal(calls[0].url, "https://api.example.test/v1/cap/requests")
+  assert.equal(JSON.parse(calls[0].options.body).connection_id, "con_1")
+  assert.equal(calls[1].url, "https://api.example.test/v1/cap/packets")
+  assert.equal(calls[2].url, "https://api.example.test/v1/cap/proposals")
+})
+
 test("non-2xx response throws MemactSDKError", async () => {
   const client = createMemactClient({
     baseUrl: "https://api.example.test",
