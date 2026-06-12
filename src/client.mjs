@@ -28,7 +28,7 @@ export function createMemactClient(config = {}) {
     return payload
   }
 
-  return {
+  const client = {
     capture(event = {}) {
       const body = {
         schema_version: "memact.capture_event.v0",
@@ -156,6 +156,39 @@ export function createMemactClient(config = {}) {
       return request("/v1/credits")
     }
   }
+  client.cap = {
+    request(capRequest = {}, options = {}) {
+      return request("/v1/cap/requests", {
+        method: "POST",
+        body: {
+          connection_id: options.connection_id || capRequest.connection_id || config.connectionId,
+          ...capRequest
+        },
+        connectionId: options.connection_id || capRequest.connection_id || config.connectionId
+      })
+    },
+    packet(input = {}, options = {}) {
+      return request("/v1/cap/packets", {
+        method: "POST",
+        body: {
+          connection_id: options.connection_id || input.connection_id || config.connectionId,
+          ...input
+        },
+        connectionId: options.connection_id || input.connection_id || config.connectionId
+      })
+    },
+    propose(proposal = {}, options = {}) {
+      return request("/v1/cap/proposals", {
+        method: "POST",
+        body: {
+          connection_id: options.connection_id || proposal.connection_id || config.connectionId,
+          proposal
+        },
+        connectionId: options.connection_id || proposal.connection_id || config.connectionId
+      })
+    }
+  }
+  return client
 }
 
 function withQuery(path, options = {}) {
