@@ -79,6 +79,12 @@ export function createMemactClient(config = {}) {
     proposeWikiEntry(proposal = {}, options = {}) {
       return this.suggestMemory(proposal, options)
     },
+    proposeSuggestion(proposal = {}, options = {}) {
+      return this.suggestMemory(proposal, options)
+    },
+    proposeContextSuggestion(proposal = {}, options = {}) {
+      return this.proposeContext(proposal, options)
+    },
     verifyAccess(options = {}) {
       return request("/v1/access/verify", { method: "POST", body: options, connectionId: options.connection_id || config.connectionId })
     },

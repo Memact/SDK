@@ -95,6 +95,8 @@ test("signal, context proposal, and credit methods call access endpoints", async
   await client.suggestMemory({ category: "fitness", title: "Prefers strength workouts", context: { preference: "strength" } })
   await client.getAllowedMemory({ connection_id: "conn_1", activity_categories: ["fitness"] })
   await client.getCredits()
+  await client.proposeSuggestion({ category: "fitness", title: "Prefers strength workouts", context: { preference: "strength" } })
+  await client.proposeContextSuggestion({ category: "music", title: "Prefers Brazilian phonk", context: { genre: "Brazilian phonk" } })
 
   assert.equal(calls[0].url, "https://api.example.test/v1/wiki/proposals")
   assert.equal(JSON.parse(calls[0].options.body).raw_signal.source_app, "music-app")
@@ -104,6 +106,8 @@ test("signal, context proposal, and credit methods call access endpoints", async
   assert.equal(JSON.parse(calls[2].options.body).proposal.title, "Prefers strength workouts")
   assert.equal(calls[3].url, "https://api.example.test/v1/memory?connection_id=conn_1&activity_categories=fitness")
   assert.equal(calls[4].url, "https://api.example.test/v1/credits")
+  assert.equal(calls[5].url, "https://api.example.test/v1/memory/suggestions")
+  assert.equal(calls[6].url, "https://api.example.test/v1/wiki/proposals")
 })
 
 test("CAP helpers call CAP endpoints from server-side client", async () => {
