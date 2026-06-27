@@ -164,33 +164,13 @@ export function createMemactClient(config = {}) {
   }
   client.cap = {
     request(capRequest = {}, options = {}) {
-      return request("/v1/cap/requests", {
+      return request("/v1/cap/request", {
         method: "POST",
         body: {
           connection_id: options.connection_id || capRequest.connection_id || config.connectionId,
           ...capRequest
         },
         connectionId: options.connection_id || capRequest.connection_id || config.connectionId
-      })
-    },
-    packet(input = {}, options = {}) {
-      return request("/v1/cap/packets", {
-        method: "POST",
-        body: {
-          connection_id: options.connection_id || input.connection_id || config.connectionId,
-          ...input
-        },
-        connectionId: options.connection_id || input.connection_id || config.connectionId
-      })
-    },
-    propose(proposal = {}, options = {}) {
-      return request("/v1/cap/proposals", {
-        method: "POST",
-        body: {
-          connection_id: options.connection_id || proposal.connection_id || config.connectionId,
-          proposal
-        },
-        connectionId: options.connection_id || proposal.connection_id || config.connectionId
       })
     }
   }

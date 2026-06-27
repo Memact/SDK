@@ -128,20 +128,9 @@ test("CAP helpers call CAP endpoints from server-side client", async () => {
     requested_context: [{ description: "workout goal", required: true }],
     requested_categories: ["fitness"]
   })
-  await client.cap.packet({
-    request_id: "cap_req_1",
-    requested_categories: ["fitness"]
-  })
-  await client.cap.propose({
-    category: "fitness",
-    field_path: "fitness.goal",
-    proposed_value: "maintenance"
-  })
 
-  assert.equal(calls[0].url, "https://api.example.test/v1/cap/requests")
+  assert.equal(calls[0].url, "https://api.example.test/v1/cap/request")
   assert.equal(JSON.parse(calls[0].options.body).connection_id, "con_1")
-  assert.equal(calls[1].url, "https://api.example.test/v1/cap/packets")
-  assert.equal(calls[2].url, "https://api.example.test/v1/cap/proposals")
 })
 
 test("non-2xx response throws MemactSDKError", async () => {
