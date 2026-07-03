@@ -1,4 +1,4 @@
-import { MemactSDKError } from "./errors.mjs"
+import { MemactSDKError, logDeprecationWarning } from "./errors.mjs"
 import { validateCaptureEvent } from "./local-validation.mjs"
 
 export function createMemactClient(config = {}) {
@@ -54,6 +54,7 @@ export function createMemactClient(config = {}) {
       return request("/v1/wiki/proposals", { method: "POST", body, connectionId: body.connection_id })
     },
     sendAppActivity(activity = {}, options = {}) {
+      logDeprecationWarning("sendAppActivity", "sendSignal");
       return this.sendSignal(activity, options)
     },
     proposeContext(proposal = {}, options = {}) {
@@ -77,12 +78,15 @@ export function createMemactClient(config = {}) {
       return request("/v1/memory/suggestions", { method: "POST", body, connectionId: body.connection_id })
     },
     proposeWikiEntry(proposal = {}, options = {}) {
+      logDeprecationWarning("proposeWikiEntry", "suggestMemory");
       return this.suggestMemory(proposal, options)
     },
     proposeSuggestion(proposal = {}, options = {}) {
+      logDeprecationWarning("proposeSuggestion", "suggestMemory");
       return this.suggestMemory(proposal, options)
     },
     proposeContextSuggestion(proposal = {}, options = {}) {
+      logDeprecationWarning("proposeContextSuggestion", "proposeContext");
       return this.proposeContext(proposal, options)
     },
     verifyAccess(options = {}) {

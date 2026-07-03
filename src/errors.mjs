@@ -7,3 +7,12 @@ export class MemactSDKError extends Error {
     this.details = details
   }
 }
+
+const loggedWarnings = new Set();
+
+export function logDeprecationWarning(featureName, alternative) {
+  if (!loggedWarnings.has(featureName)) {
+    console.warn(`[Memact SDK Warning]: "${featureName}" is deprecated and will be removed in a future release. Please use "${alternative}" instead.`);
+    loggedWarnings.add(featureName);
+  }
+}
