@@ -1,7 +1,13 @@
 import { MemactSDKError, logDeprecationWarning } from "./errors.mjs"
 import { validateCaptureEvent } from "./local-validation.mjs"
+import { validateClientConfig } from "./config-validation.mjs"
 
 export function createMemactClient(config = {}) {
+  const validation = validateClientConfig(config)
+  if (!validation.ok) {
+    throw new MemactSDKError(validation.errors.join(", "), { code: "invalid_client_config" })
+  }
+
   const baseUrl = String(config.baseUrl || "").replace(/\/+$/, "")
   if (!baseUrl) throw new MemactSDKError("baseUrl is required", { code: "missing_base_url" })
   const fetchImpl = config.fetchImpl || globalThis.fetch
