@@ -140,3 +140,31 @@ test("non-2xx response throws MemactSDKError", async () => {
   })
   await assert.rejects(() => client.getFeatures(), /Nope/)
 })
+
+test("runFeature triggers diagnostic trace logs when trace option loop is flagged", async () => {
+  let matchedTrace = null;
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async () => new Response(JSON.stringify({ ok: true }), { status: 200 })
+  });
+
+  const inputPayload = {
+    editor_target: "cursor-editor",
+    context_tokens: ["openai-spec-v3", "lifecycle-context-hook"]
+  };
+
+  await client.runFeature("adaptive-completion", inputPayload, {
+    enableDiagnosticTrace: true,
+    activity_categories: ["developer_work"],
+    onDiagnosticTrace: (trace) => {
+      matchedTrace = trace;
+    }
+  });
+
+  assert.ok(matchedTrace);
+  assert.equal(matchedTrace.trace_kind, "code_editor_context_injection");
+  assert.equal(matchedTrace.feature_id, "adaptive-completion");
+  assert.equal(matchedTrace.editor_target, "cursor-editor");
+  assert.equal(matchedTrace.active_tokens.length, 2);
+  assert.deepEqual(matchedTrace.categories_evaluated, ["developer_work"]);
+});

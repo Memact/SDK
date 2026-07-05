@@ -99,6 +99,26 @@ export function createMemactClient(config = {}) {
       return request("/v1/access/verify", { method: "POST", body: options, connectionId: options.connection_id || config.connectionId })
     },
     runFeature(featureId, input = {}, options = {}) {
+      // 🕵️‍♂️ Issue #17 Code Editor Diagnostic Trace Logger Hook Pass
+      if (options.enableDiagnosticTrace || config.enableDiagnosticTrace) {
+        const categories = options.activity_categories || [];
+        const tracePayload = {
+          trace_kind: "code_editor_context_injection",
+          feature_id: featureId,
+          timestamp: new Date().toISOString(),
+          active_tokens: Array.isArray(input.context_tokens) ? input.context_tokens : [],
+          categories_evaluated: categories,
+          editor_target: input.editor_target || "cursor-editor",
+        };
+        
+        console.log(`[Memact SDK Diagnostics] Code Editor Injection active: FeatureID=${featureId}, TokensCount=${tracePayload.active_tokens.length}`);
+        
+        // Expose trace lineage via option loop callback reference if provided
+        if (typeof options.onDiagnosticTrace === "function") {
+          options.onDiagnosticTrace(tracePayload);
+        }
+      }
+
       return request(`/v1/features/${encodeURIComponent(featureId)}/run`, {
         method: "POST",
         body: {
