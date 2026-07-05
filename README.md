@@ -12,7 +12,7 @@ The SDK is a client library for JavaScript and Node.js. It lets your app:
 ## Development
 
 To install and run tests:
-```powershell
+```sh
 npm install
 npm test
 ```
