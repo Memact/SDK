@@ -1,27 +1,18 @@
-# Memact — SDK
+# Memact SDK
 
-Memact is open identity infrastructure.
-
-Users own an identity address. Apps interact with identity providers through open protocols.
+The Memact SDK makes it easy for developers to connect their apps to user addresses and communicate using the CAP and CCP protocols.
 
 ## What the SDK Does
 
-The SDK is the primary integration library for app developers. It enables any app to:
+The SDK is a client library for JavaScript and Node.js. It lets your app:
 
-1. **Connect** to any identity address, resolving the provider automatically
-2. **Request context** from the user's identity provider (CAP)
-3. **Contribute observations** to the user's identity context (CCP)
-4. **Propose corrections** to identity context (CRP)
+1. **Connect** to any identity address, automatically finding the provider.
+2. **Request context** from the user's provider using CAP.
+3. **Contribute observations** to the user's pending queue using CCP.
 
 ## Provider Independence
 
-The SDK is not tied to any single identity provider. Given an identity address, the SDK:
-1. Performs WebFinger discovery to find the provider
-2. Fetches the provider's capability document
-3. Authenticates the app with the provider
-4. Routes all subsequent calls to the correct protocol endpoints
-
-This means an app built with the Memact SDK works with any CAP/CCP/CRP-compatible identity provider — not only Memact.
+The SDK is not locked into any single provider. It resolves the provider from the user's address, fetches its configurations, and routes subsequent requests directly to it. This means an app using the SDK works with any provider implementing the CAP and CCP standards.
 
 ## Quick Start
 
@@ -40,9 +31,6 @@ const context = await client.requestContext({
   fields: ['preferred_activity', 'experience_level'],
   purpose: 'personalize workout recommendations'
 });
-// context.entries[0].confidence → 0.87
-// context.entries[0].decay_status → 'current'
-// context.entries[0].entry_type → 'app_observation'
 
 // Contribute an observation (CCP)
 await client.contribute({
@@ -66,4 +54,4 @@ npm install @memact/sdk
 
 ## License
 
-Apache 2.0. The SDK is intentionally provider-independent.
+Apache 2.0. The SDK is open and free.
