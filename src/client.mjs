@@ -2,6 +2,85 @@ import { MemactSDKError, logDeprecationWarning } from "./errors.mjs"
 import { validateCaptureEvent } from "./local-validation.mjs"
 import { validateClientConfig } from "./config-validation.mjs"
 
+export class MemactClient {
+  static async connect(identityAddress, config = {}) {
+    let baseUrl = config.baseUrl || "http://localhost:3000";
+    if (identityAddress && identityAddress.includes("@")) {
+      const domain = identityAddress.split("@")[1];
+      if (domain !== "localhost" && domain !== "memact.com") {
+        baseUrl = `https://${domain}`;
+      }
+    }
+    const clientConfig = { ...config, baseUrl };
+    return new MemactClient(clientConfig);
+  }
+
+  constructor(config = {}) {
+    const validation = validateClientConfig(config);
+    if (!validation.ok) {
+      throw new MemactSDKError(validation.errors.join(", "), { code: "invalid_client_config" });
+    }
+    this.config = config;
+    this.baseUrl = String(config.baseUrl || "").replace(/\/+$/, "");
+    if (!this.baseUrl) throw new MemactSDKError("baseUrl is required", { code: "missing_base_url" });
+    this.fetchImpl = config.fetchImpl || globalThis.fetch;
+    if (typeof this.fetchImpl !== "function") throw new MemactSDKError("fetch is not available", { code: "missing_fetch" });
+  }
+
+  async _request(path, { method = "GET", body, connectionId = this.config.connectionId } = {}) {
+    const headers = { "Content-Type": "application/json" };
+    if (this.config.apiKey) headers.Authorization = `Bearer ${this.config.apiKey}`;
+    if (connectionId) headers["X-Memact-Connection-Id"] = connectionId;
+    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) : {};
+    if (!response.ok) {
+      throw new MemactSDKError(payload?.error?.message || "Memact request failed", {
+        status: response.status,
+        code: payload?.error?.code || "memact_request_failed",
+        details: payload
+      });
+    }
+    return payload;
+  }
+
+  async requestContext(params = {}) {
+    const body = {
+      connection_id: params.connection_id || this.config.connectionId,
+      request_id: params.request_id || `req_${Math.random().toString(36).slice(2)}`,
+      app_id: params.app_id || this.config.appId,
+      purpose: params.purpose || "general_context",
+      requested_context: params.requested_context || params.fields?.map(f => ({ description: f, required: true })) || [],
+      categories: params.categories || []
+    };
+    return this._request("/v1/cap/request", {
+      method: "POST",
+      body,
+      connectionId: body.connection_id
+    });
+  }
+
+  async contribute(params = {}) {
+    const body = {
+      category: params.category || "general",
+      field: params.field || "",
+      value: params.value,
+      entry_type: params.entry_type || "app_observation",
+      evidence: params.evidence || {},
+      connection_id: params.connection_id || this.config.connectionId
+    };
+    return this._request("/v1/contributions/propose", {
+      method: "POST",
+      body,
+      connectionId: body.connection_id
+    });
+  }
+}
+
 export function createMemactClient(config = {}) {
   const validation = validateClientConfig(config)
   if (!validation.ok) {
@@ -170,6 +249,34 @@ export function createMemactClient(config = {}) {
     },
     getCredits() {
       return request("/v1/credits")
+    },
+    requestContext(params = {}) {
+      return request("/v1/cap/request", {
+        method: "POST",
+        body: {
+          connection_id: params.connection_id || config.connectionId,
+          request_id: params.request_id || `req_${Math.random().toString(36).slice(2)}`,
+          app_id: params.app_id || config.appId,
+          purpose: params.purpose || "general_context",
+          requested_context: params.requested_context || params.fields?.map(f => ({ description: f, required: true })) || [],
+          categories: params.categories || []
+        },
+        connectionId: params.connection_id || config.connectionId
+      })
+    },
+    contribute(params = {}) {
+      return request("/v1/contributions/propose", {
+        method: "POST",
+        body: {
+          category: params.category || "general",
+          field: params.field || "",
+          value: params.value,
+          entry_type: params.entry_type || "app_observation",
+          evidence: params.evidence || {},
+          connection_id: params.connection_id || config.connectionId
+        },
+        connectionId: params.connection_id || config.connectionId
+      })
     }
   }
   client.cap = {
@@ -194,3 +301,4 @@ function withQuery(path, options = {}) {
   const query = params.toString()
   return query ? `${path}?${query}` : path
 }
+
