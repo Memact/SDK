@@ -3,7 +3,6 @@ import assert from "node:assert/strict"
 import { MemactProvider, useContextClaim } from "../src/react.mjs"
 
 test("useContextClaim returns error if executed outside of running React engine environment context", () => {
-  // Ensure runtime does not find React primitive structures
   const originalGlobalReact = globalThis.React;
   delete globalThis.React;
 
@@ -16,7 +15,7 @@ test("useContextClaim returns error if executed outside of running React engine 
   }
 });
 
-test("useContextClaim executes queries correctly under mock structural injection passes", async () => {
+test("useContextClaim executes queries correctly under mock structural context injection passes", async () => {
   let queriesPassed = [];
   let trackingClocksCleared = false;
 
@@ -28,9 +27,18 @@ test("useContextClaim executes queries correctly under mock structural injection
     }
   };
 
-  // Construct a clean mock loop mimicking state transformations
   let hookEffectClosure = null;
   const mockReactEngine = {
+    createContext() {
+      return { Provider: function({ children }) { return children; } };
+    },
+    // FIXED: Added mock createElement tracking to return children context safely
+    createElement(type, props, children) {
+      return children;
+    },
+    useContext() {
+      return mockClient;
+    },
     useState(initial) {
       let val = initial;
       const setter = (newVal) => { val = newVal; };
@@ -41,14 +49,13 @@ test("useContextClaim executes queries correctly under mock structural injection
     }
   };
 
-  // Inject structural duck parameters natively onto global scope path
   globalThis.React = mockReactEngine;
 
   try {
-    // Invoke hook with custom client option override injection path mapping
-    const result = useContextClaim("music", { client: mockClient });
+    // Mount provider then pull hook state tracking metrics
+    MemactProvider({ client: mockClient, children: null });
+    const result = useContextClaim("music", {});
     
-    // Fire structural lifecycle trigger hooks
     if (typeof hookEffectClosure === "function") {
       const cleanupFn = await hookEffectClosure();
       if (typeof cleanupFn === "function") {

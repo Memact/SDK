@@ -1,22 +1,34 @@
 /**
- * Global fallback or structural bindings for React primitives.
- * This prevents runtime crash failures in non-React vanilla environments.
+ * Safe reference helper to pull the running React instance.
+ * Checks typeof window first to guarantee absolute safety in Node environment tests.
  */
-const ReactInstance = typeof window !== "undefined" && window.React ? window.React : null;
+const getReactInstance = () => {
+  if (typeof window !== "undefined" && window.React) return window.React;
+  if (typeof globalThis !== "undefined" && globalThis.React) return globalThis.React;
+  return null;
+};
 
-// Context provider backing fallback constructor block
-const DummyContext = { Provider: function({ value, children }) { return children; } };
-export const MemactContext = { Provider: DummyContext.Provider };
+// 1. FIXED: Creating the shared stable context instance OUTSIDE of the rendering cycle
+let SharedMemactContext = null;
+
+const getContextInstance = (R) => {
+  if (!SharedMemactContext && R && typeof R.createContext === "function") {
+    SharedMemactContext = R.createContext(null);
+  }
+  return SharedMemactContext;
+};
 
 export function MemactProvider({ client, children }) {
   if (!client) {
     console.warn("[Memact SDK] MemactProvider was mounted without a valid client instance.");
   }
   
-  // Use dynamically injected React instances if present, otherwise handle structure ducks
-  const R = ReactInstance || (typeof globalThis !== "undefined" && globalThis.React);
-  if (R && typeof R.createContext === "function") {
-    return R.createElement(R.createContext(null).Provider, { value: client }, children);
+  const R = getReactInstance();
+  const Context = getContextInstance(R);
+  
+  // If running in an active React environment, cleanly create the element provider
+  if (R && Context) {
+    return R.createElement(Context.Provider, { value: client }, children);
   }
   
   return children;
@@ -28,20 +40,31 @@ export function MemactProvider({ client, children }) {
  * @param {Object} options - Subscriptions modifiers and query configuration hooks
  */
 export function useContextClaim(category, options = {}) {
-  // Grab standard state primitives gracefully from global contextual environment injections
-  const R = ReactInstance || (typeof globalThis !== "undefined" && globalThis.React);
+  const R = getReactInstance();
+  const Context = getContextInstance(R);
   
-  if (!R) {
-    return { claim: null, loading: false, error: new Error("React instance not found. Ensure this hook is executed inside a running React application environment.") };
+  if (!R || !Context) {
+    return { 
+      claim: null, 
+      loading: false, 
+      error: new Error("React instance not found. Ensure this hook is executed inside a running React application environment.") 
+    };
   }
 
-  // Use structural hook bindings natively at runtime
+  // 3. FIXED: Extract client via React.useContext from our stable, outer context instance
+  const client = R.useContext(Context);
+  
   const [claim, setClaim] = R.useState(null);
   const [loading, setLoading] = R.useState(true);
   const [error, setError] = R.useState(null);
 
   R.useEffect(() => {
-    // Structural runtime safety constraints checks
+    if (!client) {
+      setError(new Error("useContextClaim must be used within a MemactProvider element tree."));
+      setLoading(false);
+      return;
+    }
+
     if (!category) {
       setError(new Error("category parameter is required for state management filtering."));
       setLoading(false);
@@ -53,14 +76,8 @@ export function useContextClaim(category, options = {}) {
 
     const fetchCurrentClaim = async () => {
       try {
-        // Dynamic evaluation pass
-        const contextClient = typeof options.client === "object" ? options.client : null;
-        if (!contextClient) {
-          throw new Error("useContextClaim must be used within a MemactProvider element tree.");
-        }
-
-        const connectionId = options.connection_id || contextClient.connectionId;
-        const result = await contextClient.getAllowedMemory({
+        const connectionId = options.connection_id || client.connectionId;
+        const result = await client.getAllowedMemory({
           connection_id: connectionId,
           activity_categories: [category],
           ...options
@@ -90,7 +107,7 @@ export function useContextClaim(category, options = {}) {
       isMounted = false;
       clearInterval(trackerClockId);
     };
-  }, [category, JSON.stringify(options)]);
+  }, [client, category, JSON.stringify(options)]);
 
   return { claim, loading, error };
 }
