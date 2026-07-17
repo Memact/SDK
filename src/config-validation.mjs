@@ -17,5 +17,10 @@ export function validateClientConfig(config = {}) {
     errors.push("connectionId must be a string when provided")
   }
 
+  // FIXED (#93): Support E2EE configuration by validating optional cryptographic keys
+  if (config.privateKey !== undefined && typeof config.privateKey !== "string") {
+    errors.push("privateKey must be a string when provided")
+  }
+
   return { ok: errors.length === 0, errors }
 }
