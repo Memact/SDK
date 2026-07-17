@@ -1,7 +1,8 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import crypto from "node:crypto" // Added for E2EE test cryptographic generation
-import { createMemactClient, MemactSDKError } from "../src/index.mjs"
+import { createMemactClient, MemactClient, MemactSDKError } from "../src/index.mjs"
+
 
 test("missing baseUrl throws", () => {
   assert.throws(() => createMemactClient(), MemactSDKError)
@@ -201,3 +202,45 @@ test("OAuth E2EE flow initializes session and wraps access verifications success
   assert.equal(decryptedMetadata.context_scopes[0], "profile:read");
   assert.ok(decryptedMetadata.timestamp);
 });
+test("MemactClient class supports connect, requestContext, and contribute methods", async () => {
+  const calls = []
+  const client = await MemactClient.connect("alice@memact.com", {
+    apiKey: "mka_test",
+    appId: "fitness-app",
+    connectionId: "con_1",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    }
+  })
+
+  assert.equal(client.baseUrl, "http://localhost:3000") // falls back since it's memact.com or localhost or doesn't override local default
+
+  await client.requestContext({
+    categories: ["fitness.v1"],
+    fields: ["preferred_activity"],
+    purpose: "recommend workouts"
+  })
+
+  await client.contribute({
+    category: "fitness.v1",
+    field: "preferred_activity",
+    value: "cycling",
+    entry_type: "app_observation",
+    evidence: { source: "Strava", confidence: 0.9 }
+  })
+
+  assert.equal(calls[0].url, "http://localhost:3000/v1/cap/request")
+  assert.equal(calls[0].options.method, "POST")
+  const reqBody = JSON.parse(calls[0].options.body)
+  assert.equal(reqBody.purpose, "recommend workouts")
+  assert.deepEqual(reqBody.requested_context, [{ description: "preferred_activity", required: true }])
+
+  assert.equal(calls[1].url, "http://localhost:3000/v1/contributions/propose")
+  assert.equal(calls[1].options.method, "POST")
+  const cBody = JSON.parse(calls[1].options.body)
+  assert.equal(cBody.value, "cycling")
+  assert.equal(cBody.entry_type, "app_observation")
+  assert.equal(cBody.evidence.source, "Strava")
+})
+
