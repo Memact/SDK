@@ -1,53 +1,57 @@
-# Memact Contributor Handoff
+# Memact SDK
 
-Memact is where users see what apps know about them and control it.
+The Memact SDK makes it easy for developers to connect their apps to user addresses and communicate using the CAP and CCP protocols.
 
-The SDK is what apps use from server-side code.
+## What the SDK Does
 
-## The idea
+The SDK is a client library for JavaScript and Node.js. It lets your app:
 
-Most apps personalize quietly. They guess from clicks, isolated profiles, and
-hidden assumptions.
+1. **Connect** to any identity address, automatically finding the provider.
+2. **Request context** from the user's provider using CAP.
+3. **Contribute observations** to the user's pending queue using CCP.
 
-Memact gives apps a better path. An app can ask first, suggest memory with
-evidence, and later read only the memory the user allowed.
+## Provider Independence
 
-If a music app notices a user keeps replaying Brazilian phonk, it can suggest:
+The SDK is not locked into any single provider. It resolves the provider from the user's address, fetches its configurations, and routes subsequent requests directly to it. This means an app using the SDK works with any provider implementing the CAP and CCP standards.
 
-```text
-Prefers Brazilian phonk, especially high-energy tracks.
+## Quick Start
+
+```js
+import { MemactClient } from '@memact/sdk';
+
+// Connect to any identity address
+const client = await MemactClient.connect('alice@memact.com', {
+  appId: 'your-app-id',
+  appSecret: 'your-app-secret'
+});
+
+// Request context (CAP)
+const context = await client.requestContext({
+  categories: ['fitness.v1'],
+  fields: ['preferred_activity', 'experience_level'],
+  purpose: 'personalize workout recommendations'
+});
+
+// Contribute an observation (CCP)
+await client.contribute({
+  category: 'fitness.v1',
+  field: 'completed_workout',
+  value: { type: 'run', distance_km: 5.2 },
+  entry_type: 'app_observation',
+  evidence: {
+    source: 'gps_tracker',
+    confidence: 0.95,
+    description: 'GPS-tracked run'
+  }
+});
 ```
 
-The user can accept it, edit it, or reject it.
+## Install
 
-## What the SDK should make easy
+```bash
+npm install @memact/sdk
+```
 
-- Request access.
-- Suggest memory.
-- Send specific app activity when a clean suggestion is not ready.
-- Read allowed memory summaries.
-- Fetch Context category rules.
+## License
 
-## Parts
-
-- Access handles consent, apps, API keys, scopes, and permissions.
-- Yourself is where users add, edit, approve, reject, delete, and share memory.
-- Context defines app category rules and memory suggestion templates.
-- Memory stores accepted memory, history, retrieval, and app-safe summaries.
-- Contracts defines shared shapes.
-- SDK lets apps connect to Memact.
-
-## Rules
-
-- Keep API keys server-side.
-- Default visibility should be private.
-- Apps should not get full Yourself access.
-- Apps should only get relevant category memory with permission.
-- User-added memory is stronger than app-proposed memory.
-- Important app writes should require approval.
-- Activity is not identity.
-- Do not bring back Capture, Inference, Playground, or Intent as core product language.
-
-## Best explanation
-
-Apps suggest memory. Users decide what stays. Apps read only what they are allowed to use.
+Apache 2.0. The SDK is open and free.
