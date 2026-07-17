@@ -1,5 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import crypto from "node:crypto" // Added for E2EE test cryptographic generation
 import { createMemactClient, MemactSDKError } from "../src/index.mjs"
 
 test("missing baseUrl throws", () => {
@@ -140,3 +141,63 @@ test("non-2xx response throws MemactSDKError", async () => {
   })
   await assert.rejects(() => client.getFeatures(), /Nope/)
 })
+
+// FEATURE (#91): Verify asymmetric OAuth handshake + E2EE access signing flows
+test("OAuth E2EE flow initializes session and wraps access verifications successfully (#91)", async () => {
+  const calls = [];
+  
+  const mockFetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("/v1/oauth/e2ee/keys")) {
+      return new Response(JSON.stringify({ status: "registered", session_id: "e2ee_sess_91" }), { status: 200 });
+    }
+    if (url.includes("/v1/access/verify")) {
+      return new Response(JSON.stringify({ access: "granted" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    appId: "secure_e2ee_app",
+    fetchImpl: mockFetch
+  });
+
+  // Generate test key bundle
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "pkcs1", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" }
+  });
+
+  // 1. Verify exception on incomplete configuration parameters
+  await assert.rejects(
+    () => client.e2ee.initializeSession("", { publicKey, privateKey }),
+    /A valid OAuth token is required to initialize an E2EE session/
+  );
+  await assert.rejects(
+    () => client.e2ee.initializeSession("mock_token", { publicKey: "" }),
+    /A valid asymmetric key pair bundle is required for E2EE context validation/
+  );
+
+  // 2. Perform authenticated key exchange handshake registration
+  const sessionRes = await client.e2ee.initializeSession("oauth_bearer_token_91", { publicKey, privateKey });
+  assert.equal(sessionRes.status, "registered");
+  assert.equal(calls[0].url, "https://api.example.test/v1/oauth/e2ee/keys");
+  assert.equal(calls[0].options.headers["Authorization"], "Bearer oauth_bearer_token_91");
+
+  // 3. Verify asymmetric E2EE wrapping signatures inside verifyAccess
+  const accessRes = await client.verifyAccess({ context_scopes: ["profile:read"] });
+  assert.equal(accessRes.access, "granted");
+  assert.equal(calls[1].url, "https://api.example.test/v1/access/verify");
+  assert.equal(calls[1].options.headers["Authorization"], "Bearer oauth_bearer_token_91");
+
+  const bodyPayload = JSON.parse(calls[1].options.body);
+  assert.equal(bodyPayload.algo, "RSA-PSS-SHA256");
+  assert.ok(bodyPayload.signature);
+  assert.ok(bodyPayload.encrypted_payload);
+
+  const decryptedMetadata = JSON.parse(bodyPayload.encrypted_payload);
+  assert.equal(decryptedMetadata.context_scopes[0], "profile:read");
+  assert.ok(decryptedMetadata.timestamp);
+});
