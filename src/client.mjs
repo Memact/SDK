@@ -93,10 +93,21 @@ export function createMemactClient(config = {}) {
   const fetchImpl = config.fetchImpl || globalThis.fetch;
   if (typeof fetchImpl !== "function") throw new MemactSDKError("fetch is not available", { code: "missing_fetch" });
 
-  const request = async (path, { method = "GET", body, connectionId = config.connectionId } = {}) => {
+  // Internal token cache for the OAuth flow session state
+  let oauthTokenCache = null;
+
+  const request = async (path, { method = "GET", body, connectionId = config.connectionId, useOAuth = false } = {}) => {
     const headers = { "Content-Type": "application/json" };
-    if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+    
+    // FEATURE (#92): Prioritize runtime OAuth bearer token context over static API keys for webhook systems
+    if (useOAuth && oauthTokenCache) {
+      headers.Authorization = `Bearer ${oauthTokenCache}`;
+    } else if (config.apiKey) {
+      headers.Authorization = `Bearer ${config.apiKey}`;
+    }
+    
     if (connectionId) headers["X-Memact-Connection-Id"] = connectionId;
+    
     const response = await fetchImpl(`${baseUrl}${path}`, {
       method,
       headers,
@@ -318,16 +329,33 @@ export function createMemactClient(config = {}) {
     }
   };
 
-  client.cap = {
-    request(capRequest = {}, options = {}) {
-      return request("/v1/cap/request", {
+  // FIXED (#92): Implement standard OAuth Flow for Webhook & Event Pub/Sub mechanisms
+  client.oauth = {
+    async authenticate(clientId, clientSecret) {
+      if (!clientId || !clientSecret) {
+        throw new MemactSDKError("clientId and clientSecret are required for OAuth authentication", { code: "missing_oauth_credentials" });
+      }
+      const res = await request("/v1/oauth/token", {
         method: "POST",
-        body: {
-          connection_id: options.connection_id || capRequest.connection_id || config.connectionId,
-          ...capRequest
-        },
-        connectionId: options.connection_id || capRequest.connection_id || config.connectionId
+        body: { grant_type: "client_credentials", client_id: clientId, client_secret: clientSecret }
       });
+      if (res && res.access_token) {
+        oauthTokenCache = res.access_token;
+      }
+      return res;
+    },
+    async subscribeWebhook(targetUrl, events = []) {
+      if (!oauthTokenCache) {
+        throw new MemactSDKError("OAuth authentication must be completed before subscribing to webhooks", { code: "unauthenticated_oauth_session" });
+      }
+      return request("/v1/oauth/webhooks/subscribe", {
+        method: "POST",
+        body: { url: targetUrl, subscribed_events: events },
+        useOAuth: true
+      });
+    },
+    clearSession() {
+      oauthTokenCache = null;
     }
   };
 
