@@ -1,4 +1,4 @@
-import test from "node:test"
+import test, { describe } from "node:test"
 import assert from "node:assert/strict"
 import crypto from "node:crypto" // Added for E2EE test cryptographic generation
 import { createMemactClient, MemactClient, MemactSDKError } from "../src/index.mjs"
@@ -42,6 +42,38 @@ test("verifyAccess and runFeature post correctly", async () => {
     "https://api.example.test/v1/features/adaptive-article-overview/run"
   ])
 })
+
+describe("UploadPanel E2EE Cryptographic Verification Suite (#93)", () => {
+  test("verifyAccess generates cryptographic signature when privateKey configuration is set", async () => {
+    const calls = [];
+    
+    // Generate a secure mock key-pair bundle for execution frame test isolation
+    const { privateKey } = crypto.generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" }
+    });
+
+    const client = createMemactClient({
+      baseUrl: "https://api.example.test",
+      privateKey,
+      fetchImpl: async (url, options) => {
+        calls.push({ url, options });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+    });
+
+    await client.verifyAccess({ required_scopes: ["memory:read"] });
+
+    const payloadBody = JSON.parse(calls[0].options.body);
+    assert.ok(payloadBody.signature, "Cryptographic payload must include a signed header token");
+    assert.equal(payloadBody.algo, "RSA-PSS-SHA256");
+    assert.ok(payloadBody.encrypted_payload, "Should map raw strings down to signed transport contexts");
+    
+    const parsedInnerPayload = JSON.parse(payloadBody.encrypted_payload);
+    assert.equal(parsedInnerPayload.required_scopes[0], "memory:read");
+    assert.ok(parsedInnerPayload.timestamp, "Payload frame must bind automated verification validation timestamps");
+  });
+});
 
 test("schema helper methods call schema endpoints", async () => {
   const calls = []

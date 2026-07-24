@@ -300,7 +300,7 @@ export function createMemactClient(config = {}) {
       return this.getMemory(options);
     },
     getCredits() {
-      return request("/v1/credits")
+      return request("/v1/credits");
     },
     requestContext(params = {}) {
       return request("/v1/cap/request", {
@@ -314,7 +314,7 @@ export function createMemactClient(config = {}) {
           categories: params.categories || []
         },
         connectionId: params.connection_id || config.connectionId
-      })
+      });
     },
     contribute(params = {}) {
       return request("/v1/contributions/propose", {
@@ -328,7 +328,7 @@ export function createMemactClient(config = {}) {
           connection_id: params.connection_id || config.connectionId
         },
         connectionId: params.connection_id || config.connectionId
-      })
+      });
     }
   };
 
