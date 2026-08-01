@@ -234,6 +234,49 @@ test("OAuth E2EE flow initializes session and wraps access verifications success
   assert.equal(decryptedMetadata.context_scopes[0], "profile:read");
   assert.ok(decryptedMetadata.timestamp);
 });
+
+// FIXED (#92): Verify standard OAuth flow token exchanges and subscription header bindings
+test("OAuth flow exchanges tokens and signs webhook subscriptions successfully (#92)", async () => {
+  const calls = [];
+  
+  const mockFetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url.includes("/v1/oauth/token")) {
+      return new Response(JSON.stringify({ access_token: "mock_oauth_token_xyz123", expires_in: 3600 }), { status: 200 });
+    }
+    if (url.includes("/v1/oauth/webhooks/subscribe")) {
+      return new Response(JSON.stringify({ status: "subscribed", webhook_id: "wh_01" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+
+  const client = createMemactClient({
+    baseUrl: "https://api.example.test",
+    appId: "pubsub_app",
+    fetchImpl: mockFetch
+  });
+
+  // 1. Verify unauthenticated actions fail cleanly
+  await assert.rejects(
+    () => client.oauth.subscribeWebhook("https://callback.test/hook", ["event.fired"]),
+    /OAuth authentication must be completed before subscribing to webhooks/
+  );
+
+  // 2. Perform authenticating credential exchange
+  const authRes = await client.oauth.authenticate("my_client_id", "my_secret_key");
+  assert.equal(authRes.access_token, "mock_oauth_token_xyz123");
+  assert.equal(calls[0].url, "https://api.example.test/v1/oauth/token");
+  
+  const tokenPayload = JSON.parse(calls[0].options.body);
+  assert.equal(tokenPayload.grant_type, "client_credentials");
+
+  // 3. Perform authenticated subscription and verify headers
+  const subRes = await client.oauth.subscribeWebhook("https://callback.test/hook", ["event.fired"]);
+  assert.equal(subRes.status, "subscribed");
+  assert.equal(calls[1].url, "https://api.example.test/v1/oauth/webhooks/subscribe");
+  assert.equal(calls[1].options.headers["Authorization"], "Bearer mock_oauth_token_xyz123");
+});
+
 test("MemactClient class supports connect, requestContext, and contribute methods", async () => {
   const calls = []
   const client = await MemactClient.connect("alice@memact.com", {
@@ -246,7 +289,7 @@ test("MemactClient class supports connect, requestContext, and contribute method
     }
   })
 
-  assert.equal(client.baseUrl, "http://localhost:3000") // falls back since it's memact.com or localhost or doesn't override local default
+  assert.equal(client.baseUrl, "http://localhost:3000")
 
   await client.requestContext({
     categories: ["fitness.v1"],
@@ -275,4 +318,3 @@ test("MemactClient class supports connect, requestContext, and contribute method
   assert.equal(cBody.entry_type, "app_observation")
   assert.equal(cBody.evidence.source, "Strava")
 })
-

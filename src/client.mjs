@@ -96,13 +96,16 @@ export function createMemactClient(config = {}) {
   // Internal E2EE Key Session Tracking
   let activeSessionKeyPair = null;
   let activeOAuthToken = null;
+  // Internal token cache for the OAuth flow session state
+  let oauthTokenCache = null;
 
-  const request = async (path, { method = "GET", body, connectionId = config.connectionId, useToken = false } = {}) => {
+  const request = async (path, { method = "GET", body, connectionId = config.connectionId, useToken = false, useOAuth = false } = {}) => {
     const headers = { "Content-Type": "application/json" };
     
-    // FEATURE (#91): Bind active token to the Authorization header if specified
     if (useToken && activeOAuthToken) {
       headers.Authorization = `Bearer ${activeOAuthToken}`;
+    } else if (useOAuth && oauthTokenCache) {
+      headers.Authorization = `Bearer ${oauthTokenCache}`;
     } else if (config.apiKey) {
       headers.Authorization = `Bearer ${config.apiKey}`;
     }
@@ -188,11 +191,12 @@ export function createMemactClient(config = {}) {
       return this.proposeContext(proposal, options);
     },
     
-    // FEATURE (#91): Upgrade verifyAccess to sign payloads if an active E2EE session exists
+    // FEATURE (#91): Upgrade verifyAccess to sign payloads if an active E2EE session exists or config.privateKey is provided
     verifyAccess(options = {}) {
       let outboundBody = { ...options };
+      const activeKey = (activeSessionKeyPair && activeSessionKeyPair.privateKey) || config.privateKey;
 
-      if (activeSessionKeyPair && activeSessionKeyPair.privateKey) {
+      if (activeKey) {
         const timestamp = new Date().toISOString();
         const payloadToSign = JSON.stringify({
           ...options,
@@ -205,7 +209,7 @@ export function createMemactClient(config = {}) {
             "sha256",
             Buffer.from(payloadToSign),
             {
-              key: activeSessionKeyPair.privateKey,
+              key: activeKey,
               padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
             }
           ).toString("base64");
@@ -226,7 +230,7 @@ export function createMemactClient(config = {}) {
         method: "POST", 
         body: outboundBody, 
         connectionId: options.connection_id || config.connectionId,
-        useToken: true 
+        useToken: activeOAuthToken ? true : false
       });
     },
     runFeature(featureId, input = {}, options = {}) {
@@ -329,6 +333,22 @@ export function createMemactClient(config = {}) {
         },
         connectionId: params.connection_id || config.connectionId
       });
+    },
+    cap: {
+      request(params = {}) {
+        return request("/v1/cap/request", {
+          method: "POST",
+          body: {
+            connection_id: params.connection_id || config.connectionId,
+            request_id: params.request_id || `req_${Math.random().toString(36).slice(2)}`,
+            app_id: params.app_id || config.appId,
+            purpose: params.purpose || "general_context",
+            requested_context: params.requested_context || params.fields?.map(f => ({ description: f, required: true })) || [],
+            categories: params.categories || []
+          },
+          connectionId: params.connection_id || config.connectionId
+        });
+      }
     }
   };
 
@@ -352,6 +372,36 @@ export function createMemactClient(config = {}) {
     clearSession() {
       activeSessionKeyPair = null;
       activeOAuthToken = null;
+    }
+  };
+
+  // FIXED (#92): Implement standard OAuth Flow for Webhook & Event Pub/Sub mechanisms
+  client.oauth = {
+    async authenticate(clientId, clientSecret) {
+      if (!clientId || !clientSecret) {
+        throw new MemactSDKError("clientId and clientSecret are required for OAuth authentication", { code: "missing_oauth_credentials" });
+      }
+      const res = await request("/v1/oauth/token", {
+        method: "POST",
+        body: { grant_type: "client_credentials", client_id: clientId, client_secret: clientSecret }
+      });
+      if (res && res.access_token) {
+        oauthTokenCache = res.access_token;
+      }
+      return res;
+    },
+    async subscribeWebhook(targetUrl, events = []) {
+      if (!oauthTokenCache) {
+        throw new MemactSDKError("OAuth authentication must be completed before subscribing to webhooks", { code: "unauthenticated_oauth_session" });
+      }
+      return request("/v1/oauth/webhooks/subscribe", {
+        method: "POST",
+        body: { url: targetUrl, subscribed_events: events },
+        useOAuth: true
+      });
+    },
+    clearSession() {
+      oauthTokenCache = null;
     }
   };
 
